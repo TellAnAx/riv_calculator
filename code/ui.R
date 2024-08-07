@@ -1,0 +1,25 @@
+ui <- fluidPage(
+  titlePanel("RIF Points Calculator"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("resultType", "Type of Result:",
+                  choices = list("Article (WoS-listed, with AIS)" = "jimp_ais",
+                                 "Article (WoS-listed, without AIS)" = "jimp_no_ais",
+                                 "Article (not WoS-listed, Scopus-listed)" = "jsc",
+                                 "Conference proceedings" = "proceedings",
+                                 "Book" = "book",
+                                 "Book capter" = "chapter",
+                                 "Patent" = "patent")),
+      conditionalPanel(
+        condition = "input.resultType != 'book' && input.resultType != 'patent' && input.resultType != 'chapter'",
+        numericInput("ranking", "Ranking of the journal:", value = 1, min = 1),
+        numericInput("Pmax", "Total number of journals in category:", value = 1, min = 1)
+      ),
+      conditionalPanel(
+        condition = "input.resultType == 'chapter'",
+        numericInput("pageShare", "Page share in the book:", value = 1, min = 0, max = 1, step = 0.01)
+      )
+    )
+  )
+)
