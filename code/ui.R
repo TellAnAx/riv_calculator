@@ -9,7 +9,7 @@ ui <- fluidPage(
                                  "Article (not WoS-listed, Scopus-listed)" = "jsc",
                                  "Conference proceedings" = "proceedings",
                                  "Book" = "book",
-                                 "Book capter" = "chapter",
+                                 "Book chapter" = "chapter",
                                  "Patent" = "patent")),
       conditionalPanel(
         condition = "input.resultType != 'book' && input.resultType != 'patent' && input.resultType != 'chapter'",
@@ -20,6 +20,10 @@ ui <- fluidPage(
         condition = "input.resultType == 'chapter'",
         numericInput("pageShare", "Page share in the book:", value = 1, min = 0, max = 1, step = 0.01)
       )
+    ),
+    mainPanel(
+      h3("Calculated RIF Points:"),
+      textOutput("rifPoints")
     )
   )
 )
