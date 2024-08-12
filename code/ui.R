@@ -1,5 +1,5 @@
 ui <- fluidPage(
-  titlePanel("RIF Points Calculator"),
+  titlePanel("RIV Points Calculator"),
   
   sidebarLayout(
     sidebarPanel(
@@ -22,8 +22,8 @@ ui <- fluidPage(
       )
     ),
     mainPanel(
-      h3("Calculated RIF Points:"),
-      textOutput("rifPoints")
+      h3("Calculated RIV Points:"),
+      textOutput("rivPoints")
     )
   )
 )

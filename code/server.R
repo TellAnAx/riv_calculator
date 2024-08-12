@@ -32,7 +32,7 @@ server <- function(input, output) {
   })
   
   
-  output$rifPoints <- renderText({
+  output$rivPoints <- renderText({
     calcPoints()
   })
   
