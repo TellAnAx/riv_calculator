@@ -1,5 +1,6 @@
 ui <- fluidPage(
-  titlePanel("RIV Points Calculator"),
+  
+  titlePanel("RIV Point Calculator"),
   
   sidebarLayout(
     sidebarPanel(
@@ -11,10 +12,11 @@ ui <- fluidPage(
                                  "Book" = "book",
                                  "Book chapter" = "chapter",
                                  "Patent" = "patent")),
+      # Only show category inputs for journal-related result types
       conditionalPanel(
-        condition = "input.resultType != 'book' && input.resultType != 'patent' && input.resultType != 'chapter'",
-        numericInput("ranking", "Ranking of the journal:", value = 1, min = 1),
-        numericInput("Pmax", "Total number of journals in category:", value = 1, min = 1)
+        condition = "input.resultType != 'book' && input.resultType != 'patent' && input.resultType != 'chapter' && input.resultType != 'proceedings'",
+        numericInput("n_categories", "Number of categories the journal is listed in", value = 1),
+        uiOutput("categoryInputs")  # Dynamic UI for ranking and Pmax inputs
       ),
       conditionalPanel(
         condition = "input.resultType == 'chapter'",
