@@ -132,7 +132,7 @@ server <- function(input, output) {
     weight_table <- author_weights() %>% 
       mutate(sum = sum(weights),
              prop = weights/sum,
-             points = ifelse(is.na(calcPoints()), "-", calcPoints() * prop)) %>% 
+             points = calcPoints() * prop) %>% 
       
       rename(Author = "authors",
              `Individual weight` = "weights",
