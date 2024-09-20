@@ -59,11 +59,17 @@ ui <- fluidPage(
           tags$b("Journals without AIS or IF:"),
           tags$text("Same as with AIS, but use the CiteScore for sorting instead."),
         
-          tags$h3("Calculated RIV Points"),
+          tags$h3("Total RIV Points"),
           tags$div(
             style = "font-weight: bold; background-color: #f0f0f0; padding: 10px; border-radius: 5px; font-size: 20px;",
             textOutput("rivPoints")
           ),
+          
+          tags$br(),
+          tags$b("Note:"),
+          tags$text("To determine the number of RIV points for the faculty, 
+          the RIV points of co-authors from instutitions other than FROV
+          need to be substracted from the total RIV points."),
           
           tags$h3("RIV points per author"),
           tableOutput("weights")
