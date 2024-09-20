@@ -17,7 +17,7 @@ ui <- fluidPage(
       numericInput("n_coauthors_foreign", "Number of co-authors with foreign affiliation", value = 0, min = 0, step = 1),
       conditionalPanel(
         condition = "input.n_coauthors_foreign > 0 & input.n_coauthors > input.n_coauthors_foreign",
-        checkboxInput("lastauthor_foreign", "Is the last author affiliated with FFPW USB?", value = FALSE)
+        checkboxInput("lastauthor_foreign", "Is the last author affiliated with FFPW USB?", value = TRUE)
       ),
       tags$h2("Publication"),
       selectInput("resultType", "Type of Output:",
