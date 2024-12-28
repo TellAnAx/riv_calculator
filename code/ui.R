@@ -9,6 +9,19 @@ ui <- fluidPage(
   tags$h1("RIV Point Calculator"),
   
   tabsetPanel(
+    
+    # Calculator new----
+    tabPanel(
+      title = "Table",
+      sidebarLayout(
+        sidebarPanel(),
+        mainPanel()
+      )
+    ),
+    
+    
+    
+    # Calculator old----
     tabPanel(
       title = "Calculator",
       
@@ -77,6 +90,8 @@ ui <- fluidPage(
       )
     ),
     
+    
+    # FAQ----
     tabPanel(
       title = "FAQ",
       tags$h3("What are RIV points?"),
@@ -112,7 +127,6 @@ ui <- fluidPage(
                 and last) with an exclusively foreign affiliation by 0.5.")
       )
     )
-    
   ),
   
   tags$br(),
