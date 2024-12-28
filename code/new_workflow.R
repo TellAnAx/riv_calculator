@@ -1,3 +1,10 @@
+# GENERAL
+#
+# best would be to modularize the calculation process because
+# that way the only thing that needs to be changed between
+# faculty tabs is the calculation function for mean factors, 
+# RIV points, and perhaps author weights. 
+
 # create dummy variables----
 input <- list()
 input$n_categories
@@ -5,6 +12,7 @@ input$n_categories
 
 # read journal data----
 journal_data <- readxl::read_excel("JCI_2023.xlsx")
+
 
 
 # create dataset with unique journal names----
@@ -16,12 +24,14 @@ journal_data %>%
   select(-subject_area_name, -Faculty_Quartiles, -Ranking, -edition)
 
 
+
 # create dataset with journal names, IF, AIS, and ranking split into two columns----
 journal_data %>% 
   tidyr::separate_wider_delim(Ranking, 
                               names = c("rank", "out_of"),  
                               delim = " / ") %>% 
   select(-Faculty_Quartiles, -edition)
+
 
 
 # calculate the mean factor----
