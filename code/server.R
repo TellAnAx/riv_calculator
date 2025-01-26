@@ -1,4 +1,5 @@
 server <- function(input, output) {
+  
   # DATA IMPORT----
   
   ## Load data from app directory----
@@ -14,7 +15,7 @@ server <- function(input, output) {
       
     }, error = function(e) {
       print(paste("Error loading data:", e$message))
-      NULL
+      return(NULL)
     })
   })
   
@@ -47,7 +48,7 @@ server <- function(input, output) {
       
     }, error = function(e) {
       print(paste("Error creating unique journals table:", e$message))
-      NULL
+      return(NULL)
     })
   })
   
@@ -122,9 +123,7 @@ server <- function(input, output) {
           journal_ranking())
       
       selected_index <- input$unique_journals_rows_selected
-      
       selected_name <- unique_journals()[selected_index, ][["journal_name"]]
-      
       selected_journal <- journal_ranking() %>%
         filter(journal_name == selected_name)
       
@@ -134,12 +133,7 @@ server <- function(input, output) {
       return(selected_journal)
       
     }, error = function(e) {
-      print(
-        paste(
-          "Error creating journal ranking subset based on user selection:",
-          e$message
-        )
-      )
+      print(paste("Error creating journal ranking subset based on user selection:", e$message))
       return(NULL)
     })
   })
@@ -166,12 +160,12 @@ server <- function(input, output) {
       
       mean_factor <- (1 - N) / (1 + (N / 0.057))
       
-      #round(Factor, 4)
       
       print("Mean factor calculated successfully!")
       print(mean_factor)
       
       return(mean_factor)
+      
       
     }, error = function(e) {
       print(paste("Error calculating the mean factor:", e$message))
@@ -190,11 +184,13 @@ server <- function(input, output) {
   ## Calculate RIV points based on result type and computed factors----
   riv_points <- reactive({
     tryCatch({
-      #req(mean_factor(), selected_journal())
+      req(mean_factor(), 
+          selected_journal())
       
       factor <- mean_factor()
       selected_journal <- selected_journal() %>%
         distinct(Impact.Factor, Article.Influence)
+      
       
       print("Selected journal subset created:")
       print(selected_journal)
@@ -216,6 +212,8 @@ server <- function(input, output) {
       print(riv_points)
       
       return(riv_points)
+      
+      
     }, error = function(e) {
       print(paste("Error in calculating the RIV points:", e$message))
       return(NULL)
@@ -232,37 +230,11 @@ server <- function(input, output) {
   ## Calculate author weights----
   author_weights <- reactive({
     tryCatch({
-      # Debugging output for inputs
-      print(paste("Input: n_authors:", input$n_authors))
-      print(paste("Input: n_authors_foreign:", input$n_authors_foreign))
-      print(paste(
-        "Input: firstauthor_foreign:",
-        input$firstauthor_foreign
-      ))
-      print(paste("Input: lastauthor_foreign:", input$lastauthor_foreign))
-      
-      # req(input$n_authors,
-      #     input$n_authors_foreign,
-      #     input$firstauthor_foreign,
-      #     input$lastauthor_foreign)
-      
       n_authors <- input$n_authors
       n_authors_foreign <- min(input$n_authors_foreign, n_authors)  # Ensure foreign authors ≤ total authors
       firstauthor_foreign <- input$firstauthor_foreign
       lastauthor_foreign <- input$lastauthor_foreign
       
-      print(
-        paste(
-          "Processed inputs: n_authors =",
-          n_authors,
-          "n_authors_foreign =",
-          n_authors_foreign,
-          "firstauthor_foreign =",
-          firstauthor_foreign,
-          "lastauthor_foreign =",
-          lastauthor_foreign
-        )
-      )
       
       # Create author vector
       if (n_authors == 1) {
@@ -276,6 +248,7 @@ server <- function(input, output) {
       print("Authors vector created:")
       print(authors)
       
+      
       # Create weights vector
       weights <- rep(1, n_authors)
       if (n_authors > 1) {
@@ -283,8 +256,10 @@ server <- function(input, output) {
         weights[length(weights)] <- weights[length(weights)] * 1.5  # Last author gets 1.5x weight
       }
       
+      
       print("Weights vector created:")
       print(weights)
+      
       
       # Create foreign vector
       foreign <- rep(FALSE, n_authors)
@@ -312,18 +287,23 @@ server <- function(input, output) {
       print("Foreign vector created:")
       print(foreign)
       
+      
       # Update weights for foreign authors
       weights <- weights * ifelse(foreign, 0.5, 1)
+      
       
       # Create author_weights tibble
       author_weights <- tibble(authors, weights, foreign)
       
       print("Author weights determined successfully!")
       
+      
       print("Output: author_weights")
       print(author_weights)
       
+      
       return(author_weights)
+      
       
     }, error = function(e) {
       print(paste("Error creating author weights dataset:", e$message))
@@ -338,14 +318,11 @@ server <- function(input, output) {
   
   # RIV POINTS PER AUTHOR----
   
-  
   ## Calculate RIV points per author----
   riv_points_per_author <- reactive({
     tryCatch({
-      print("Input: riv_points")
-      print(riv_points())
-      
-      req(author_weights(), riv_points())
+      req(author_weights(), 
+          riv_points())
       
       author_weights <- author_weights()
       riv_points <- riv_points()
@@ -365,42 +342,70 @@ server <- function(input, output) {
       
       return(riv_points_per_author)
       
+      
     }, error = function(e) {
-      print("Error in calculating RIV points per author:", e$message)
+      print(paste("Error in calculating RIV points per author:", e$message))
       return(NULL)
     })
   })
   
   
+  
   ## Render riv_overview table----
   output$riv_overview <- renderTable({
-    riv_overview <- riv_points_per_author() %>%
-      mutate(foreign = ifelse(foreign == TRUE, "external", "FFPW")) %>%
-      group_by(foreign) %>%
-      summarise(riv_points = sum(points_per_author)) %>%
-      rename(
-        `Affiliation` = "foreign", 
-        `Resulting RIV points` = "riv_points")
-    
-    return(riv_overview)
+    tryCatch({
+      
+      req(riv_points_per_author())
+      
+      riv_overview <- riv_points_per_author() %>%
+        mutate(foreign = ifelse(foreign == TRUE, "external", "FFPW")) %>%
+        group_by(foreign) %>%
+        summarise(riv_points = sum(points_per_author)) %>%
+        rename(
+          `Affiliation` = "foreign", 
+          `Resulting RIV points` = "riv_points")
+      
+      
+      print("RIV point overview table rendered successfully!")
+      print(riv_overview)
+      
+      return(riv_overview)
+      
+      
+    }, error = function(e) {
+      print(paste("Error in rendering RIV overview table:", e$message))
+      return(NULL)
+    })
   },
   width = "100%",
   digits = 2)
+  
   
   
   ## Render riv_per_author table----
   output$riv_points_per_author <- renderTable({
-    riv_points_per_author_table <- riv_points_per_author() %>%
-      select(-sum, -prop, -foreign) %>%
-      rename(
-        `Author` = "authors",
-        `Resulting author weight` = "weights",
-        `Resulting RIV points` = "points_per_author"
-      )
-    
-    return(riv_points_per_author_table)
+    tryCatch({
+      req(riv_points_per_author())
+      
+      riv_points_per_author_table <- riv_points_per_author() %>%
+        select(-sum, -prop, -foreign) %>%
+        rename(
+          `Author` = "authors",
+          `Resulting author weight` = "weights",
+          `Resulting RIV points` = "points_per_author"
+        )
+      
+      
+      print("RIV points per author table rendered successfully!")
+      print(riv_points_per_author_table)
+      
+      return(riv_points_per_author_table)
+      
+    }, error = function(e){
+      print(paste("Error in rendering RIV overview table:", e$message))
+      return(NULL)
+    })
   },
   width = "100%",
   digits = 2)
-  
 }
