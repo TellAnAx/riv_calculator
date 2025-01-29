@@ -18,6 +18,19 @@ ui <- fluidPage(
   
   ## Tab 1: Calculator----
   tabPanel(
+    title = "Test",
+    sidebarLayout(
+      sidebarPanel(
+        tags$h2("Authorship"),
+        numericInput("n_authors", 
+                     "How many authors contributed?", 
+                     value = 1, min = 1, step = 1)
+      ),
+      mainPanel()
+    )
+  ),
+  
+  tabPanel(
     title = "Calculator",
     
     ### Sidebar Layout----
