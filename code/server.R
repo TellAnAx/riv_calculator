@@ -22,6 +22,95 @@ server <- function(input, output) {
   
   
   
+  # UI----
+  
+  ## Create checkbox matrix----
+  
+  # Reactive function to generate the author names
+  author_names <- reactive({
+    req(input$n_authors)
+    n <- input$n_authors
+    
+    # Generate author names dynamically
+    c("First author", "Last author", paste("Other author", seq(1, n - 2)))[1:n]
+  })
+  
+  # Dynamic UI for the matrix of checkboxes in the sidebar
+  output$matrix_ui <- renderUI({
+    req(input$n_authors)
+    authors <- author_names()
+    n <- length(authors)
+    
+    # Create the checkbox matrix: Authors x {FFPW, Czech, Non-Czech}
+    matrix_ui <- tagList(
+      tags$table(
+        style = "width: 100%; border-collapse: collapse;",  # Full width styling
+        tags$thead(
+          tags$tr(
+            tags$th("Author", style = "text-align:left; width = 40%;"),
+            tags$th("FFPW", style = "text-align:center; width = 20%;"),
+            tags$th("Czech", style = "text-align:center; width = 20%;"),
+            tags$th("Non-Czech", style = "text-align:center; width = 20%;")
+          )
+        ),
+        tags$tbody(
+          lapply(1:n, function(i) {
+            tags$tr(
+              tags$td(authors[i], style = "text-align:left;"),
+              tags$td(checkboxInput(paste0("ffpw_", i), 
+                                    label = NULL, value = TRUE),
+                      style = "text-align:center;"),
+              tags$td(checkboxInput(paste0("czech_", i), 
+                                    label = NULL, value = FALSE),
+                      style = "text-align:center;"),
+              tags$td(checkboxInput(paste0("non_czech_", i), 
+                                    label = NULL, value = FALSE),
+                      style = "text-align:center;")
+            )
+          })
+        )
+      )
+    )
+    
+    return(matrix_ui)
+  })
+  
+  
+  
+  ## Confirm selection----
+  # Observe the "Confirm Selections" button and generate the final table
+  author_data <- eventReactive(input$submit, {
+    req(input$n_authors)
+    authors <- author_names()
+    n <- length(authors)
+    
+    # Collect checkbox inputs dynamically
+    ffpw <- sapply(1:n, function(i) input[[paste0("ffpw_", i)]])
+    czech <- sapply(1:n, function(i) input[[paste0("czech_", i)]])
+    non_czech <- sapply(1:n, function(i) input[[paste0("non_czech_", i)]])
+    
+    # Create a tibble with the data
+    tibble(
+      authors,
+      ffpw,
+      czech,
+      non_czech
+    )
+  })
+  
+  # Render the final table in the main panel
+  output$final_author_table <- renderTable({
+    author_data() %>% 
+      rename(
+        Author = authors,
+        FFPW = ffpw,
+        Czech = czech,
+        `Non-Czech` = non_czech
+      )
+  })
+  
+  
+  
   
   # UNIQUE JOURNALS TABLE----
   #
@@ -70,7 +159,7 @@ server <- function(input, output) {
           selected = 1
         ),
         filter = "none",
-        options = list(pageLength = 15, 
+        options = list(pageLength = 5, 
                        autoWidth = TRUE)
       )
       
@@ -224,89 +313,56 @@ server <- function(input, output) {
   
   
   
-  
   # AUTHOR WEIGHTS----
   
   ## Calculate author weights----
-  author_weights <- reactive({
+  author_weights <- eventReactive(input$submit, {
     tryCatch({
-      n_authors <- input$n_authors
-      n_authors_foreign <- min(input$n_authors_foreign, n_authors)  # Ensure foreign authors ≤ total authors
-      firstauthor_foreign <- input$firstauthor_foreign
-      lastauthor_foreign <- input$lastauthor_foreign
       
+      weights <- tibble(
+        authors = c("First author", "Last author", "Other author"),
+        weight = c(2, 1.5, 1)
+      )
       
-      # Create author vector
-      if (n_authors == 1) {
-        authors <- "First author"
-      } else if (n_authors == 2) {
-        authors <- c("First author", "Last author")
-      } else if (n_authors > 2) {
-        authors <- c("First author", paste("Co-author", seq(1, n_authors - 2)), "Last author")
-      }
-      
-      print("Authors vector created:")
-      print(authors)
-      
-      
-      # Create weights vector
-      weights <- rep(1, n_authors)
-      if (n_authors > 1) {
-        weights[1] <- weights[1] * 2      # First author gets 2x weight
-        weights[length(weights)] <- weights[length(weights)] * 1.5  # Last author gets 1.5x weight
-      }
-      
-      
-      print("Weights vector created:")
+      print("Weights tibble created successfully:")
       print(weights)
+    }, error = function(e) {
+      print(paste("Error creating weights tibble:", e$message))
+      return(NULL)
+    })
+    
+    
+    tryCatch({
+      req(author_data())
       
+      author_weights <- author_data() %>% 
+        mutate(authors = str_remove(authors, " [0-9]+")) %>% 
+        left_join(weights, join_by(authors))
       
-      # Create foreign vector
-      foreign <- rep(FALSE, n_authors)
-      
-      # Assign foreign authors
-      if (n_authors_foreign > 0) {
-        # Assign first author if applicable
-        if (firstauthor_foreign) {
-          foreign[1] <- TRUE
-          n_authors_foreign <- n_authors_foreign - 1
-        }
-        
-        # Assign last author if applicable
-        if (lastauthor_foreign && n_authors_foreign > 0) {
-          foreign[n_authors] <- TRUE
-          n_authors_foreign <- n_authors_foreign - 1
-        }
-        
-        # Assign remaining foreign authors to the middle
-        if (n_authors_foreign > 0) {
-          foreign[2:(1 + n_authors_foreign)] <- TRUE
-        }
-      }
-      
-      print("Foreign vector created:")
-      print(foreign)
-      
-      
-      # Update weights for foreign authors
-      weights <- weights * ifelse(foreign, 0.5, 1)
-      
-      
-      # Create author_weights tibble
-      author_weights <- tibble(authors, weights, foreign)
-      
-      print("Author weights determined successfully!")
-      
-      
-      print("Output: author_weights")
+      print("author_weights created successfully:")
       print(author_weights)
-      
-      
-      return(author_weights)
-      
-      
     }, error = function(e) {
       print(paste("Error creating author weights dataset:", e$message))
+      return(NULL)
+    })
+    
+    
+    tryCatch({
+      author_weights <- author_weights %>% 
+        mutate(
+          total_weight = case_when(
+            ffpw == TRUE ~ weight * 1,
+            czech == TRUE ~ weight * 1,
+            non_czech == TRUE ~ weight * 0.5
+          )
+        )
+      
+      print("Author weights determined successfully!")
+      print(author_weights)
+      
+      return(author_weights)  
+    }, error = function(e) {
+      print(paste("Error determining author weights:", e$message))
       return(NULL)
     })
   })
@@ -319,7 +375,7 @@ server <- function(input, output) {
   # RIV POINTS PER AUTHOR----
   
   ## Calculate RIV points per author----
-  riv_points_per_author <- reactive({
+  riv_points_per_author <- eventReactive(input$submit, {
     tryCatch({
       req(author_weights(), 
           riv_points())
@@ -329,9 +385,10 @@ server <- function(input, output) {
       
       riv_points_per_author <- author_weights %>%
         mutate(
-          sum = sum(weights),
-          prop = weights / sum,
-          points_per_author = riv_points * prop
+          sum = sum(total_weight),
+          prop = total_weight / sum,
+          points_per_author = riv_points * prop,
+          points_ffpw = if_else(ffpw == FALSE, 0, points_per_author)
         )
       
       
@@ -342,7 +399,6 @@ server <- function(input, output) {
       
       return(riv_points_per_author)
       
-      
     }, error = function(e) {
       print(paste("Error in calculating RIV points per author:", e$message))
       return(NULL)
@@ -351,27 +407,23 @@ server <- function(input, output) {
   
   
   
-  ## Render riv_overview table----
+  # Render riv_overview table----
   output$riv_overview <- renderTable({
+    req(riv_points_per_author())
+
     tryCatch({
-      
-      req(riv_points_per_author())
-      
+
       riv_overview <- riv_points_per_author() %>%
-        mutate(foreign = ifelse(foreign == TRUE, "external", "FFPW")) %>%
-        group_by(foreign) %>%
-        summarise(riv_points = sum(points_per_author)) %>%
-        rename(
-          `Affiliation` = "foreign", 
-          `Resulting RIV points` = "riv_points")
-      
-      
-      print("RIV point overview table rendered successfully!")
+        summarise(
+          Total = sum(points_per_author),
+          FFPW = sum(points_ffpw)
+          )
+
+      print("riv_overview table rendered successfully!")
       print(riv_overview)
-      
+
       return(riv_overview)
-      
-      
+
     }, error = function(e) {
       print(paste("Error in rendering RIV overview table:", e$message))
       return(NULL)
@@ -384,19 +436,19 @@ server <- function(input, output) {
   
   ## Render riv_per_author table----
   output$riv_points_per_author <- renderTable({
+    req(riv_points_per_author())
+    
     tryCatch({
-      req(riv_points_per_author())
-      
       riv_points_per_author_table <- riv_points_per_author() %>%
-        select(-sum, -prop, -foreign) %>%
+        select(-ffpw, -czech, -non_czech, -weight, -sum, -prop) %>%
         rename(
           `Author` = "authors",
-          `Resulting author weight` = "weights",
+          `Resulting author weight` = "total_weight",
           `Resulting RIV points` = "points_per_author"
         )
       
       
-      print("RIV points per author table rendered successfully!")
+      print("riv_points_per_author table rendered successfully!")
       print(riv_points_per_author_table)
       
       return(riv_points_per_author_table)
