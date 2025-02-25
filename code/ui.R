@@ -18,59 +18,49 @@ ui <- fluidPage(
   tags$h1("RIV Point Calculator"),
   
   # TABS----
-  tabsetPanel(
-    
-    ## Tab 1: Calculator----
-    tabPanel(
-      title = "Calculator",
-      
-      fluidRow(
-        column(4,
-               wellPanel(
-                 tags$h4("RIV points per Institution"),
-                 tableOutput("riv_overview")  # First table (50% width)
-               )
-        ),
-        
-        column(8,
-               wellPanel(
-                 tags$h4("RIV points per Author"),
-                 tableOutput("riv_points_per_author")  # Second table (50% width)
-               )
-        )
-      ),
-      
-      sidebarLayout(
-        sidebarPanel(
-          wellPanel(
-            tags$h2("Authorship"),
-            
-            # Input for the number of authors
-            numericInput(
-              inputId = "n_authors", 
-              label = "How many authors contributed?", 
-              value = 1, min = 1, step = 1
-            ),
-            helpText("Enter the total number of authors."),
-            
-            hr(),
-            
-            # Dynamic matrix of checkboxes
-            uiOutput("matrix_ui"),
-            
-            # Button to confirm selections
-            actionButton("submit", "Confirm Selections", class = "btn btn-primary")
-          )
-        ),
-        
-        mainPanel(
-          wellPanel(
-            tags$h3("Journal Overview"),
-            DTOutput("unique_journals")
-          )
-        )
-      )
-    ),
+  tabsetPanel(## Tab 1: Calculator----
+              tabPanel(title = "Calculator", sidebarLayout(
+                sidebarPanel(
+                  wellPanel(
+                    tags$h2("Authorship"),
+                    
+                    # Input for the number of authors
+                    numericInput(
+                      inputId = "n_authors",
+                      label = "How many authors contributed?",
+                      value = 1,
+                      min = 1,
+                      step = 1
+                    ),
+                    helpText("Enter the total number of authors."),
+                    
+                    hr(),
+                    
+                    # Dynamic matrix of checkboxes
+                    uiOutput("matrix_ui"),
+                    
+                    # Button to confirm selections
+                    actionButton("submit", "Confirm Selections", class = "btn btn-primary")
+                  ),
+                  
+                  
+                  wellPanel(
+                    tags$h4("RIV points per Institution"),
+                    tableOutput("riv_overview")
+                  )
+                  
+                ),
+                
+                mainPanel(
+                  wellPanel(tags$h3("Journal Overview"), DTOutput("unique_journals")),
+                  
+                  
+                  wellPanel(
+                    tags$h4("RIV points per Author"),
+                    tableOutput("riv_points_per_author")
+                  )
+                )
+              )), 
     
     
     
