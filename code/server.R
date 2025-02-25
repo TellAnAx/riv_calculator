@@ -26,12 +26,10 @@ server <- function(input, output) {
   
   ## Create checkbox matrix----
   
-  # Reactive function to generate the author names
   author_names <- reactive({
     req(input$n_authors)
     n <- input$n_authors
     
-    # Generate author names dynamically
     c("First author", "Last author", paste("Other author", seq(1, n - 2)))[1:n]
   })
   
@@ -290,13 +288,13 @@ server <- function(input, output) {
       
       if (!is.na(factor)) {
         if (selected_journal$Article.Influence == 0 & selected_journal$Impact.Factor == 0) {
-          riv_points <- 10 + 140 * factor
+          riv_points <- 10 + 140 * factor # neither AIS nor IF
           
         } else if (selected_journal$Article.Influence == 0 & selected_journal$Impact.Factor != 0) {
-          riv_points <- 10 + 190 * factor
+          riv_points <- 10 + 190 * factor # no AIS but with IF
           
         } else {
-          riv_points <- 10 + 290 * factor
+          riv_points <- 10 + 290 * factor # both AIS and IF
         }
       }
       
@@ -334,9 +332,13 @@ server <- function(input, output) {
       return(NULL)
     })
 
+    
     tryCatch({
       author_weights <- author_data() %>% 
-        mutate(authors = str_remove(authors, " [0-9]+")) %>% 
+        mutate(
+          id = str_extract(authors, "[0-9]+"),
+          authors = str_remove(authors, " [0-9]+")
+          ) %>% 
         left_join(weights, join_by(authors))
       
       print("author_weights created successfully:")
@@ -389,13 +391,15 @@ server <- function(input, output) {
         
         # calculate RIV points for FROV
         mutate(
-          points_ffpw = case_when(
+          ffpw_weight = case_when(
             ffpw == FALSE ~ points_per_author * 0,
-            ffpw == TRUE & czech == FALSE & non_czech == FALSE ~ points_per_author * weight/total_weight,
-            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ points_per_author * ((weight + 1)/2)/total_weight,
-            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  points_per_author * ((weight + 0.5)/2)/total_weight,
-            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  points_per_author * ((weight + 1 + 0.5)/3)/total_weight
-          )
+            ffpw == TRUE & czech == FALSE & non_czech == FALSE ~ weight,
+            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ (weight + 1) / 2,
+            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  (weight + 0.5) / 2,
+            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  (weight + 1 + 0.5) / 3
+            ),
+          ffpw_riv_correction_factor = ffpw_weight / total_weight,
+          points_ffpw = points_per_author * ffpw_riv_correction_factor
         )
       
       
@@ -419,8 +423,6 @@ server <- function(input, output) {
     req(riv_points_per_author())
 
     tryCatch({
-      print(riv_points_per_author())
-      
       riv_overview <- riv_points_per_author() %>%
         summarise(
           Total = sum(points_per_author),
@@ -446,13 +448,18 @@ server <- function(input, output) {
   output$riv_points_per_author <- renderTable({
     req(riv_points_per_author())
     
+    print(riv_points_per_author())
+    
     tryCatch({
       riv_points_per_author_table <- riv_points_per_author() %>%
-        select(-c(ffpw, czech, non_czech, weight, sum_total, prop_total)) %>%
+        mutate(authors = ifelse(!is.na(id), paste(authors, id), authors)) %>% 
+        select(authors, total_weight, ffpw_weight, points_per_author, points_ffpw) %>%
         rename(
           `Author` = "authors",
-          `Resulting author weight` = "total_weight",
-          `Resulting RIV points` = "points_per_author"
+          `Author weight: Total` = "total_weight",
+          `Author weight: FFPW` = "ffpw_weight",
+          `RIV points: Author` = "points_per_author",
+          `RIV points: Faculty` = "points_ffpw"
         )
       
       
