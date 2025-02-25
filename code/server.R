@@ -353,13 +353,6 @@ server <- function(input, output) {
           total_weight = case_when(
             ffpw == TRUE | czech == TRUE ~ weight * 1,
             non_czech == TRUE ~ weight * 0.5
-          ),
-          ffpw_weight = case_when(
-            ffpw == FALSE ~ 0,
-            ffpw == TRUE & czech == FALSE & non_czech == FALSE ~ weight,
-            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ (weight + 1) / 2,
-            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  (weight + 0.5) / 2,
-            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  (weight + 1 + 0.5) / 3
           )
         )
       
@@ -385,17 +378,24 @@ server <- function(input, output) {
     req(author_weights(), riv_points())
     
     tryCatch({
-      author_weights <- author_weights()
-      riv_points <- riv_points()
-      
-      riv_points_per_author <- author_weights %>%
+      riv_points_per_author <- author_weights() %>%
+        
+        # calculate RIV points per author
         mutate(
           sum_total = sum(total_weight),
           prop_total = total_weight / sum_total,
-          points_per_author = riv_points * prop_total,
-          sum_ffpw = sum(ffpw_weight),
-          prop_ffpw = ffpw_weight / sum_ffpw,
-          points_ffpw = riv_points * prop_ffpw
+          points_per_author = riv_points() * prop_total
+        ) %>% 
+        
+        # calculate RIV points for FROV
+        mutate(
+          points_ffpw = case_when(
+            ffpw == FALSE ~ points_per_author * 0,
+            ffpw == TRUE & czech == FALSE & non_czech == FALSE ~ points_per_author * weight/total_weight,
+            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ points_per_author * ((weight + 1)/2)/total_weight,
+            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  points_per_author * ((weight + 0.5)/2)/total_weight,
+            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  points_per_author * ((weight + 1 + 0.5)/3)/total_weight
+          )
         )
       
       
@@ -419,7 +419,8 @@ server <- function(input, output) {
     req(riv_points_per_author())
 
     tryCatch({
-
+      print(riv_points_per_author())
+      
       riv_overview <- riv_points_per_author() %>%
         summarise(
           Total = sum(points_per_author),
@@ -447,8 +448,7 @@ server <- function(input, output) {
     
     tryCatch({
       riv_points_per_author_table <- riv_points_per_author() %>%
-        select(-c(ffpw, czech, non_czech, weight, sum_total, sum_ffpw, 
-                  prop_total, prop_ffpw)) %>%
+        select(-c(ffpw, czech, non_czech, weight, sum_total, prop_total)) %>%
         rename(
           `Author` = "authors",
           `Resulting author weight` = "total_weight",
