@@ -1,6 +1,7 @@
 library(shiny)
 library(dplyr)
 library(magrittr)
+library(stringr)
 library(readxl)
 library(DT)
 

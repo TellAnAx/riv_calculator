@@ -79,7 +79,7 @@ server <- function(input, output) {
   
   ## Confirm selection----
   # Observe the "Confirm Selections" button and generate the final table
-  author_data <- eventReactive(input$submit, {
+  author_data <- reactive({
     req(input$n_authors)
     authors <- author_names()
     n <- length(authors)
@@ -119,9 +119,10 @@ server <- function(input, output) {
   
   ## Create unique journal names table----
   unique_journals <- reactive({
+    
+    req(journal_data())
+    
     tryCatch({
-      req(journal_data())
-      
       unique_journals <- journal_data() %>%
         distinct(journal_name, .keep_all = TRUE) %>%
         select(-year,
@@ -181,9 +182,10 @@ server <- function(input, output) {
   
   ## Create journal ranking dataset----
   journal_ranking <- reactive({
+    
+    req(journal_data())
+    
     tryCatch({
-      req(journal_data())
-      
       journal_ranking <- journal_data() %>%
         tidyr::separate_wider_delim(Ranking,
                                     names = c("rank", "out_of"),
@@ -206,11 +208,12 @@ server <- function(input, output) {
   
   ## Create filtered dataset based on user selection----
   selected_journal <- reactive({
+    
+    req(input$unique_journals_rows_selected,
+        unique_journals(),
+        journal_ranking())
+    
     tryCatch({
-      req(input$unique_journals_rows_selected,
-          unique_journals(),
-          journal_ranking())
-      
       selected_index <- input$unique_journals_rows_selected
       selected_name <- unique_journals()[selected_index, ][["journal_name"]]
       selected_journal <- journal_ranking() %>%
@@ -233,9 +236,10 @@ server <- function(input, output) {
   
   ## Calculate mean_factor based on selected_journal----
   mean_factor <- reactive({
+    
+    req(selected_journal())
+    
     tryCatch({
-      req(selected_journal())
-      
       selected_journal <- selected_journal()
       
       count <- nrow(selected_journal)
@@ -255,7 +259,6 @@ server <- function(input, output) {
       
       return(mean_factor)
       
-      
     }, error = function(e) {
       print(paste("Error calculating the mean factor:", e$message))
       return(NULL)
@@ -272,14 +275,14 @@ server <- function(input, output) {
   
   ## Calculate RIV points based on result type and computed factors----
   riv_points <- reactive({
+    
+    req(mean_factor(), 
+        selected_journal())
+    
     tryCatch({
-      req(mean_factor(), 
-          selected_journal())
-      
       factor <- mean_factor()
       selected_journal <- selected_journal() %>%
         distinct(Impact.Factor, Article.Influence)
-      
       
       print("Selected journal subset created:")
       print(selected_journal)
@@ -302,7 +305,6 @@ server <- function(input, output) {
       
       return(riv_points)
       
-      
     }, error = function(e) {
       print(paste("Error in calculating the RIV points:", e$message))
       return(NULL)
@@ -317,8 +319,9 @@ server <- function(input, output) {
   
   ## Calculate author weights----
   author_weights <- eventReactive(input$submit, {
+    req(author_data())
+    
     tryCatch({
-      
       weights <- tibble(
         authors = c("First author", "Last author", "Other author"),
         weight = c(2, 1.5, 1)
@@ -330,11 +333,8 @@ server <- function(input, output) {
       print(paste("Error creating weights tibble:", e$message))
       return(NULL)
     })
-    
-    
+
     tryCatch({
-      req(author_data())
-      
       author_weights <- author_data() %>% 
         mutate(authors = str_remove(authors, " [0-9]+")) %>% 
         left_join(weights, join_by(authors))
@@ -357,9 +357,9 @@ server <- function(input, output) {
           ffpw_weight = case_when(
             ffpw == FALSE ~ 0,
             ffpw == TRUE & czech == FALSE & non_czech == FALSE ~ weight,
-            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ (weight + 1) / (ffpw + czech + non-czech),
-            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  (weight + 0.5) / (ffpw + czech + non-czech),
-            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  (weight + 1 + 0.5) / (ffpw + czech + non-czech)
+            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ (weight + 1) / 2,
+            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  (weight + 0.5) / 2,
+            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  (weight + 1 + 0.5) / 3
           )
         )
       
@@ -381,11 +381,10 @@ server <- function(input, output) {
   # RIV POINTS PER AUTHOR----
   
   ## Calculate RIV points per author----
-  riv_points_per_author <- eventReactive(input$submit, {
+  riv_points_per_author <- reactive({
+    req(author_weights(), riv_points())
+    
     tryCatch({
-      req(author_weights(), 
-          riv_points())
-      
       author_weights <- author_weights()
       riv_points <- riv_points()
       
