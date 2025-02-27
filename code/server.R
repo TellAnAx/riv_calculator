@@ -30,7 +30,7 @@ server <- function(input, output) {
     req(input$n_authors)
     n <- input$n_authors
     
-    c("First author", "Last author", paste("Other author", seq(1, n - 2)))[1:n]
+    c(paste("Author", seq(1, n)))[1:n]
   })
   
   # Dynamic UI for the matrix of checkboxes in the sidebar
@@ -45,16 +45,21 @@ server <- function(input, output) {
         style = "width: 100%; border-collapse: collapse;",  # Full width styling
         tags$thead(
           tags$tr(
-            tags$th("Author", style = "text-align:left; width = 40%;"),
-            tags$th("FFPW", style = "text-align:center; width = 20%;"),
-            tags$th("Czech", style = "text-align:center; width = 20%;"),
-            tags$th("Non-Czech", style = "text-align:center; width = 20%;")
+            tags$th("", style = "text-align:left; width = 40%;"),
+            tags$th("First author", style = "text-align:center; width = 15%;"),
+            tags$th("FFPW affil.", style = "text-align:center; width = 15%;"),
+            tags$th("Czech affil", style = "text-align:center; width = 15%;"),
+            tags$th("Foreign affil.", style = "text-align:center; width = 15%;")
           )
         ),
         tags$tbody(
           lapply(1:n, function(i) {
             tags$tr(
               tags$td(authors[i], style = "text-align:left;"),
+              tags$td(checkboxInput(paste0("first_", i), 
+                                    label = NULL, 
+                                    value = i == TRUE),
+                      style = "text-align:center;"),
               tags$td(checkboxInput(paste0("ffpw_", i), 
                                     label = NULL, value = TRUE),
                       style = "text-align:center;"),
@@ -86,13 +91,15 @@ server <- function(input, output) {
     ffpw <- sapply(1:n, function(i) input[[paste0("ffpw_", i)]])
     czech <- sapply(1:n, function(i) input[[paste0("czech_", i)]])
     non_czech <- sapply(1:n, function(i) input[[paste0("non_czech_", i)]])
-    
+    first_author <- sapply(1:n, function(i) input[[paste0("first_", i)]])
+
     # Create a tibble with the data
     tibble(
       authors,
       ffpw,
       czech,
-      non_czech
+      non_czech,
+      first_author
     )
   })
   
@@ -103,7 +110,8 @@ server <- function(input, output) {
         Author = authors,
         FFPW = ffpw,
         Czech = czech,
-        `Non-Czech` = non_czech
+        `Non-Czech` = non_czech,
+        `First author`= first_author
       )
   })
   
@@ -315,48 +323,45 @@ server <- function(input, output) {
   
   # AUTHOR WEIGHTS----
   
-  ## Calculate author weights----
   author_weights <- eventReactive(input$submit, {
     req(author_data())
     
-    tryCatch({
-      weights <- tibble(
-        authors = c("First author", "Last author", "Other author"),
-        weight = c(2, 1.5, 1)
-      )
-      
-      print("Weights tibble created successfully:")
-      print(weights)
-    }, error = function(e) {
-      print(paste("Error creating weights tibble:", e$message))
-      return(NULL)
-    })
-
-    
+    ## Step 1----
+    # Assigning weights according to authorship
     tryCatch({
       author_weights <- author_data() %>% 
         mutate(
           id = str_extract(authors, "[0-9]+"),
-          authors = str_remove(authors, " [0-9]+")
-          ) %>% 
-        left_join(weights, join_by(authors))
-      
-      print("author_weights created successfully:")
-      print(author_weights)
-    }, error = function(e) {
-      print(paste("Error creating author weights dataset:", e$message))
-      return(NULL)
-    })
-    
-    
-    tryCatch({
-      author_weights <- author_weights %>% 
-        mutate(
-          total_weight = case_when(
-            ffpw == TRUE | czech == TRUE ~ weight * 1,
-            non_czech == TRUE ~ weight * 0.5
+          authors = str_remove(authors, " [0-9]+"),
+          
+          ### 1.1----
+          # assign all authors a weight of 1
+          weight = 1,
+          
+          ### 1.2----
+          # add a weight of 1/n (n = number of first authors) for all first authors
+          weight = if_else(first_author == FALSE, 
+                           weight, weight + 1/sum(first_author)),
+          
+          ### 1.3----
+          # add a weight of 0.5 to the last author
+          weight = if_else(row_number() != n(), 
+                           weight, weight + 0.5),
+          
+          ### 2.1----
+          # the weights determined by following steps 1-3 is multiplied by 0.5 
+          # if the author is exclusively affiliated with an institution 
+          # outside of the Czech Republic
+          weight = if_else(ffpw == FALSE & czech == FALSE & non_czech == TRUE,
+                           weight * 0.5, weight),
+          
+          ### 2.2----
+          # if the author is affiliated with FFPW and another Czech 
+          # institution, then the hypothetical weights are being divided by 2
+          weight = if_else(ffpw == TRUE & czech == TRUE, 
+                           weight / 2, weight)
           )
-        )
+      
       
       print("Author weights determined successfully!")
       print(author_weights)
@@ -384,21 +389,15 @@ server <- function(input, output) {
         
         # calculate RIV points per author
         mutate(
-          sum_total = sum(total_weight),
-          prop_total = total_weight / sum_total,
+          sum_total = sum(weight),
+          prop_total = weight / sum_total,
           points_per_author = riv_points() * prop_total
         ) %>% 
         
         # calculate RIV points for FROV
         mutate(
-          ffpw_weight = case_when(
-            ffpw == FALSE ~ points_per_author * 0,
-            ffpw == TRUE & czech == FALSE & non_czech == FALSE ~ weight,
-            ffpw == TRUE & czech == TRUE  & non_czech == FALSE ~ (weight + 1) / 2,
-            ffpw == TRUE & czech == FALSE & non_czech == TRUE ~  (weight + 0.5) / 2,
-            ffpw == TRUE & czech == TRUE  & non_czech == TRUE ~  (weight + 1 + 0.5) / 3
-            ),
-          ffpw_riv_correction_factor = ffpw_weight / total_weight,
+          ffpw_weight = if_else(ffpw == FALSE, 0, weight),
+          ffpw_riv_correction_factor = ffpw_weight / weight,
           points_ffpw = points_per_author * ffpw_riv_correction_factor
         )
       
@@ -448,18 +447,16 @@ server <- function(input, output) {
   output$riv_points_per_author <- renderTable({
     req(riv_points_per_author())
     
-    print(riv_points_per_author())
-    
     tryCatch({
       riv_points_per_author_table <- riv_points_per_author() %>%
         mutate(authors = ifelse(!is.na(id), paste(authors, id), authors)) %>% 
-        select(authors, total_weight, ffpw_weight, points_per_author, points_ffpw) %>%
+        select(authors, weight, ffpw_weight, points_per_author, points_ffpw) %>%
         rename(
           `Author` = "authors",
-          `Author weight: Total` = "total_weight",
+          `Author weight: Total` = "weight",
           `Author weight: FFPW` = "ffpw_weight",
           `RIV points: Author` = "points_per_author",
-          `RIV points: Faculty` = "points_ffpw"
+          `RIV points: FFPW` = "points_ffpw"
         )
       
       
