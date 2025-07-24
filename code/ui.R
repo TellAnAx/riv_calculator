@@ -116,6 +116,8 @@ ui <- fluidPage(
   # FOOTER----
   tags$br(),
   tags$br(),
+  tags$text("You are using RIVcalc v1.2.0"),
+  tags$br(),
   tags$b("Written by:"),
   tags$a(href = "https://anil.tellbuescher.online", "Anıl Axel Tellbüscher"),
   tags$text(", University of South Bohemia, Czech Republic."),
