@@ -341,26 +341,46 @@ server <- function(input, output) {
           ### 1.2----
           # add a weight of 1/n (n = number of first authors) for all first authors
           weight = if_else(first_author == FALSE, 
-                           weight, weight + 1/sum(first_author)),
+                           weight, 
+                           weight + 1/sum(first_author)),
           
           ### 1.3----
           # add a weight of 0.5 to the last author
           weight = if_else(row_number() != n(), 
-                           weight, weight + 0.5),
+                           weight, 
+                           weight + 0.5),
           
           ### 2.1----
+          weight_corr = weight,
+          
+          # if the author is affiliated with FFPW and another Czech 
+          # institution, then the hypothetical weights are being divided by 2
+          weight_corr = if_else(ffpw == TRUE & czech == TRUE & non_czech == FALSE, 
+                                weight * (1/2), 
+                                weight_corr),
+          
+          
+          weight_corr = if_else(ffpw == FALSE & czech == TRUE & non_czech == FALSE, 
+                                weight * 0, 
+                                weight_corr),
+          
+          weight_corr = if_else(ffpw == TRUE & czech == FALSE & non_czech == TRUE, 
+                                weight * (1/2), 
+                                weight_corr),
+          
+          weight_corr = if_else(ffpw == FALSE & czech == TRUE & non_czech == TRUE, 
+                                weight * 0, 
+                                weight_corr),
+          
           # the weights determined by following steps 1-3 is multiplied by 0.5 
           # if the author is exclusively affiliated with an institution 
           # outside of the Czech Republic
-          weight = if_else(ffpw == FALSE & czech == FALSE & non_czech == TRUE,
-                           weight * 0.5, weight),
-          
-          ### 2.2----
-          # if the author is affiliated with FFPW and another Czech 
-          # institution, then the hypothetical weights are being divided by 2
-          weight = if_else(ffpw == TRUE & czech == TRUE, 
-                           weight / 2, weight)
+          weight_corr = if_else(ffpw == FALSE & czech == FALSE & non_czech == TRUE,
+                           weight * (1/2), 
+                           weight_corr)
           )
+          
+
       
       
       print("Author weights determined successfully!")
@@ -389,16 +409,10 @@ server <- function(input, output) {
         
         # calculate RIV points per author
         mutate(
-          sum_total = sum(weight),
-          prop_total = weight / sum_total,
-          points_per_author = riv_points() * prop_total
-        ) %>% 
-        
-        # calculate RIV points for FROV
-        mutate(
-          ffpw_weight = if_else(ffpw == FALSE, 0, weight),
-          ffpw_riv_correction_factor = ffpw_weight / weight,
-          points_ffpw = points_per_author * ffpw_riv_correction_factor
+          sum_weights = sum(weight),
+          riv_per_weight = riv_points() / sum_weights,
+          points_per_author_max = weight * riv_per_weight,
+          points_per_author = weight_corr * riv_per_weight
         )
       
       
@@ -424,8 +438,8 @@ server <- function(input, output) {
     tryCatch({
       riv_overview <- riv_points_per_author() %>%
         summarise(
-          Total = sum(points_per_author),
-          FFPW = sum(points_ffpw)
+          Total = sum(points_per_author_max),
+          FFPW = sum(points_per_author)
           )
 
       print("riv_overview table rendered successfully!")
@@ -450,13 +464,13 @@ server <- function(input, output) {
     tryCatch({
       riv_points_per_author_table <- riv_points_per_author() %>%
         mutate(authors = ifelse(!is.na(id), paste(authors, id), authors)) %>% 
-        select(authors, weight, ffpw_weight, points_per_author, points_ffpw) %>%
+        select(authors, weight, weight_corr, points_per_author_max, points_per_author) %>%
         rename(
           `Author` = "authors",
           `Author weight: Total` = "weight",
-          `Author weight: FFPW` = "ffpw_weight",
-          `RIV points: Author` = "points_per_author",
-          `RIV points: FFPW` = "points_ffpw"
+          `Author weight: FFPW` = "weight_corr",
+          `RIV points: Author` = "points_per_author_max",
+          `RIV points: FFPW` = "points_per_author"
         )
       
       
