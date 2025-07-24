@@ -5,7 +5,7 @@ server <- function(input, output) {
   ## Load data from app directory----
   journal_data <- reactive({
     tryCatch({
-      journal_data <- read_excel("JCI_2023.xlsx") %>%
+      journal_data <- read_excel("JCI_2024.xlsx") %>%
         as_tibble()
       
       print("Journal data loaded successfully!")
@@ -341,25 +341,29 @@ server <- function(input, output) {
           ### 1.2----
           # add a weight of 1/n (n = number of first authors) for all first authors
           weight = if_else(first_author == FALSE, 
-                           weight, weight + 1/sum(first_author)),
+                           weight, 
+                           weight + 1/sum(first_author)),
           
           ### 1.3----
           # add a weight of 0.5 to the last author
           weight = if_else(row_number() != n(), 
-                           weight, weight + 0.5),
+                           weight, 
+                           weight * 1.5),
           
           ### 2.1----
           # the weights determined by following steps 1-3 is multiplied by 0.5 
           # if the author is exclusively affiliated with an institution 
           # outside of the Czech Republic
           weight = if_else(ffpw == FALSE & czech == FALSE & non_czech == TRUE,
-                           weight * 0.5, weight),
+                           weight * 0.5, 
+                           weight),
           
           ### 2.2----
           # if the author is affiliated with FFPW and another Czech 
           # institution, then the hypothetical weights are being divided by 2
           weight = if_else(ffpw == TRUE & czech == TRUE, 
-                           weight / 2, weight)
+                           weight / 2, 
+                           weight)
           )
       
       
