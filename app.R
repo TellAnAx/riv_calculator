@@ -3,8 +3,8 @@ library(dplyr)
 library(magrittr)
 library(stringr)
 library(DT)
+library(shinythemes)
 
-app_version <- read.dcf("DESCRIPTION")[, "Version"]
 
 
 source("code/helper_functions.R")

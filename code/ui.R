@@ -1,3 +1,5 @@
+app_version <- read.dcf("DESCRIPTION")[, "Version"]
+
 ui <- fluidPage(
   theme = shinytheme("cerulean"),
   # Theme selection
@@ -34,7 +36,6 @@ ui <- fluidPage(
     ## Tab 1: Calculator----
     tabPanel(title = "Calculator", sidebarLayout(
       sidebarPanel(
-        wellPanel(
 
           # Input for the number of authors
           tags$h2("Authorship"),
@@ -53,24 +54,27 @@ ui <- fluidPage(
           uiOutput("matrix_ui"),
           
           # Button to confirm selections
-          actionButton("submit", "Confirm Selections", class = "btn btn-primary")
-        ),
-        
-        # Dataset selection
-        tags$h2("Dataset"),
-        selectInput(
-          inputId = "dataset",
-          label = "Which dataset to use?",
-          choices = c(
-            "JCI 2023" = "JCI_2023",
-            "JCI 2024" = "JCI_2024",
-            "JCI 2025" = "JCI_2025"
+          actionButton("submit", "Confirm Selections", class = "btn btn-primary"),
+
+          hr(),
+          
+        wellPanel(
+          # Dataset selection
+          tags$h2("Dataset"),
+          selectInput(
+            inputId = "dataset",
+            label = "Which dataset to use?",
+            choices = c(
+              "JCI 2023" = "JCI_2023",
+              "JCI 2024" = "JCI_2024",
+              "JCI 2025" = "JCI_2025"
+            ),
+            selected = "JCI_2025"
           ),
-          selected = "JCI_2025"
-        ),
-        helpText("Default: latest dataset. Older datasets can be used for 
+          helpText("Default: latest dataset. Older datasets can be used for 
         comparison with past results.")
-      ),
+        )
+        ),
       
       mainPanel(
         wellPanel(tags$h3("Journal Overview"), DTOutput("unique_journals")),
