@@ -2,9 +2,9 @@ library(shiny)
 library(dplyr)
 library(magrittr)
 library(stringr)
-library(readxl)
 library(DT)
 
+source("code/helper_functions.R")
 
 # Load UI and server
 source("code/ui.R")
