@@ -4,6 +4,9 @@ library(magrittr)
 library(stringr)
 library(DT)
 
+app_version <- read.dcf("DESCRIPTION")[, "Version"]
+
+
 source("code/helper_functions.R")
 
 # Load UI and server

@@ -27,7 +27,8 @@ This RShiny app calculates RIV points according to [Dean's Measure No. 18/2024](
 
 ## Usage
 
-- to add new *Clarivate Journal Citation Report* data, add the `.xlsx` file to the `data/` directory. Also, the dropdown menu (`input$dataset`) must be updated by adding the dataset name as additional `selectInput` option in the `ui.R` file. 
+- to add new *Clarivate Journal Citation Report* data, add the `.xlsx` file to the `data/` directory. Also, the dropdown menu (`input$dataset`) must be updated by adding the dataset name as additional `selectInput` option in the `ui.R` file.
+- version updates shall be described in `NEWS.md` and the updated version number added to `DESCRIPTION` from where it is queried in the `app.R` file and displayed in the UI automatically.
 
 
 ```{r}

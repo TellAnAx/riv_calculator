@@ -19,9 +19,15 @@ ui <- fluidPage(
       height = 80,
       width = 400
     )
-  ), windowTitle = "RIV Point Calculator"),
+  ), windowTitle = paste0("RIVcalc v", app_version)),
   
-  tags$h1("RIV Point Calculator"),
+  
+  tags$h1(
+    "RIV Point Calculator ",
+    tags$small(
+      paste0("v", app_version),
+      style = "color: #6c757d;"
+    )),
   
   # TABS----
   tabsetPanel(
@@ -129,7 +135,7 @@ ui <- fluidPage(
   # FOOTER----
   tags$br(),
   tags$br(),
-  tags$text("You are using RIVcalc v1.2.2"),
+  tags$text(paste0("You are using RIVcalc v", app_version)),
   tags$br(),
   tags$b("Written by:"),
   tags$a(href = "https://anil.tellbuescher.online", "Anıl Axel Tellbüscher"),

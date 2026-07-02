@@ -22,6 +22,9 @@ Czech Republic.
   file to the `data/` directory. Also, the dropdown menu
   (`input$dataset`) must be updated by adding the dataset name as
   additional `selectInput` option in the `ui.R` file.
+- version updates shall be described in `NEWS.md` and the updated
+  version number added to `DESCRIPTION` from where it is queried in the
+  `app.R` file and displayed in the UI automatically.
 
 ``` r
 sessionInfo()
