@@ -5,7 +5,11 @@ server <- function(input, output) {
   ## Load data from app directory----
   journal_data <- reactive({
     tryCatch({
-      journal_data <- read_excel("JCI_2024.xlsx") %>%
+      req(input$dataset)
+      dataset <- input$dataset
+      path_to_dataset <- paste0("data/", dataset, ".xlsx")
+      
+      journal_data <- read_excel(path_to_dataset) %>%
         as_tibble()
       
       print("Journal data loaded successfully!")
