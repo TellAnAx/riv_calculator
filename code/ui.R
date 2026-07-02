@@ -1,7 +1,3 @@
-library(shiny)
-library(shinythemes)
-library(DT)
-
 ui <- fluidPage(
   theme = shinytheme("cerulean"),
   # Theme selection
@@ -23,9 +19,15 @@ ui <- fluidPage(
       height = 80,
       width = 400
     )
-  ), windowTitle = "RIV Point Calculator"),
+  ), windowTitle = paste0("RIVcalc v", app_version)),
   
-  tags$h1("RIV Point Calculator"),
+  
+  tags$h1(
+    "RIV Point Calculator ",
+    tags$small(
+      paste0("v", app_version),
+      style = "color: #6c757d;"
+    )),
   
   # TABS----
   tabsetPanel(
@@ -33,9 +35,9 @@ ui <- fluidPage(
     tabPanel(title = "Calculator", sidebarLayout(
       sidebarPanel(
         wellPanel(
-          tags$h2("Authorship"),
-          
+
           # Input for the number of authors
+          tags$h2("Authorship"),
           numericInput(
             inputId = "n_authors",
             label = "How many authors contributed?",
@@ -52,7 +54,22 @@ ui <- fluidPage(
           
           # Button to confirm selections
           actionButton("submit", "Confirm Selections", class = "btn btn-primary")
-        )
+        ),
+        
+        # Dataset selection
+        tags$h2("Dataset"),
+        selectInput(
+          inputId = "dataset",
+          label = "Which dataset to use?",
+          choices = c(
+            "JCI 2023" = "JCI_2023",
+            "JCI 2024" = "JCI_2024",
+            "JCI 2025" = "JCI_2025"
+          ),
+          selected = "JCI_2025"
+        ),
+        helpText("Default: latest dataset. Older datasets can be used for 
+        comparison with past results.")
       ),
       
       mainPanel(
@@ -107,7 +124,9 @@ ui <- fluidPage(
         tags$li("Multiply the weight of the last author by 1.5."),
         tags$li(
           "Multiply the weight of those authors (including first
-                  and last) with an affiliation outside of the Czech Republic by 0.5."
+                  and last) with an affiliation outside of the Czech 
+          Republic by 0.5. More information can be found in Dean's 
+          Measure No. 18/2024."
         )
       )
     )
@@ -116,14 +135,14 @@ ui <- fluidPage(
   # FOOTER----
   tags$br(),
   tags$br(),
-  tags$text("You are using RIVcalc v1.2.1"),
+  tags$text(paste0("You are using RIVcalc v", app_version)),
   tags$br(),
   tags$b("Written by:"),
   tags$a(href = "https://anil.tellbuescher.online", "Anıl Axel Tellbüscher"),
   tags$text(", University of South Bohemia, Czech Republic."),
   tags$br(),
-  tags$b("Reporting issues:"),
-  tags$text("Please report issues via"),
+  tags$b("Bug reporting:"),
+  tags$text("Please report any issues you face during the useage of this app via"),
   tags$a(href = "https://github.com/TellAnAx/riv_calculator/issues", "GitHub"),
   tags$text(" or contact the admin via email:"),
   tags$a(href = "mailto:admin@tellbuescher.online", "admin@tellbuescher.online"),

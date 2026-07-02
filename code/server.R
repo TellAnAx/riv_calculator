@@ -5,8 +5,11 @@ server <- function(input, output) {
   ## Load data from app directory----
   journal_data <- reactive({
     tryCatch({
-      journal_data <- read_excel("JCI_2024.xlsx") %>%
-        as_tibble()
+      req(input$dataset)
+      dataset <- input$dataset
+      path_to_dataset <- paste0("data/", dataset, ".xlsx")
+      
+      journal_data <- read_journal_data(path_to_dataset)
       
       print("Journal data loaded successfully!")
       print(head(journal_data))
@@ -129,13 +132,9 @@ server <- function(input, output) {
     req(journal_data())
     
     tryCatch({
-      unique_journals <- journal_data() %>%
-        distinct(journal_name, .keep_all = TRUE) %>%
-        select(-year,
-               -subject_area_name,
-               -Faculty_Quartiles,
-               -Ranking,
-               -edition)
+      
+      journal_data <- journal_data()
+      unique_journals <- find_unique_journals(journal_data)
       
       print("Dataset with unique journal names created successfully!")
       print(head(unique_journals))
@@ -192,12 +191,9 @@ server <- function(input, output) {
     req(journal_data())
     
     tryCatch({
-      journal_ranking <- journal_data() %>%
-        tidyr::separate_wider_delim(Ranking,
-                                    names = c("rank", "out_of"),
-                                    delim = " / ") %>%
-        select(-Faculty_Quartiles, -edition) %>%
-        mutate(rank = as.numeric(rank), out_of = as.numeric(out_of))
+      
+      journal_data <- journal_data()
+      journal_ranking <- add_journal_ranking(journal_data)
       
       print("Journal ranking dataset created successfully!")
       print(head(journal_ranking))
@@ -246,19 +242,9 @@ server <- function(input, output) {
     req(selected_journal())
     
     tryCatch({
+      
       selected_journal <- selected_journal()
-      
-      count <- nrow(selected_journal)
-      
-      if (count == 0)
-        return(NA)
-      
-      total_N <- sum((selected_journal$rank - 1) / (selected_journal$out_of - 1))
-      
-      N <- total_N / count
-      
-      mean_factor <- (1 - N) / (1 + (N / 0.057))
-      
+      mean_factor <- calculate_mean_factor(selected_journal)
       
       print("Mean factor calculated successfully!")
       print(mean_factor)
@@ -286,7 +272,7 @@ server <- function(input, output) {
         selected_journal())
     
     tryCatch({
-      factor <- mean_factor()
+      mean_factor <- mean_factor()
       selected_journal <- selected_journal() %>%
         distinct(Impact.Factor, Article.Influence)
       
@@ -294,17 +280,7 @@ server <- function(input, output) {
       print(selected_journal)
       
       
-      if (!is.na(factor)) {
-        if (selected_journal$Article.Influence == 0 & selected_journal$Impact.Factor == 0) {
-          riv_points <- 10 + 140 * factor # neither AIS nor IF
-          
-        } else if (selected_journal$Article.Influence == 0 & selected_journal$Impact.Factor != 0) {
-          riv_points <- 10 + 190 * factor # no AIS but with IF
-          
-        } else {
-          riv_points <- 10 + 290 * factor # both AIS and IF
-        }
-      }
+      riv_points <- calculate_riv_points(mean_factor, selected_journal)
       
       print("RIV points calculated successfully!")
       print(riv_points)
