@@ -1,6 +1,6 @@
 Package: RIVcalc
 Title: RIV point calculator
-Version: 1.2.2
+Version: 1.2.3
 Authors@R:
     person(
         "Anıl Axel",

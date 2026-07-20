@@ -1,8 +1,8 @@
 server <- function(input, output) {
   
-  # DATA IMPORT----
+  # IMPORT DATA ----
   
-  ## Load data from app directory----
+  ## Load data from app directory
   journal_data <- reactive({
     tryCatch({
       req(input$dataset)
@@ -121,12 +121,12 @@ server <- function(input, output) {
   
   
   
-  # UNIQUE JOURNALS TABLE----
+  # UNIQUE JOURNALS----
   #
   # This is the table from where the user can select a journal to get further
   # information about the possible number of RIV points.
   
-  ## Create unique journal names table----
+  ## Create dataset----
   unique_journals <- reactive({
     
     req(journal_data())
@@ -149,7 +149,7 @@ server <- function(input, output) {
   
   
   
-  ## Render unique journals table----
+  ## Render table----
   output$unique_journals <- renderDT({
     tryCatch({
       unique_journals <- unique_journals() %>%
@@ -183,9 +183,9 @@ server <- function(input, output) {
   
   
   
-  # JOURNAL RANKING TABLE----
+  # JOURNAL RANKING----
   
-  ## Create journal ranking dataset----
+  ## Create dataset----
   journal_ranking <- reactive({
     
     req(journal_data())
@@ -208,7 +208,7 @@ server <- function(input, output) {
   
   
   
-  ## Create filtered dataset based on user selection----
+  ## Create filtered dataset----
   selected_journal <- reactive({
     
     req(input$unique_journals_rows_selected,
@@ -234,9 +234,9 @@ server <- function(input, output) {
   
   
   
-  # MEAN FACTOR CALCULATION----
+  # MEAN FACTOR----
   
-  ## Calculate mean_factor based on selected_journal----
+  ## Calculate mean_factor
   mean_factor <- reactive({
     
     req(selected_journal())
@@ -263,9 +263,9 @@ server <- function(input, output) {
   
   
   
-  # RIV POINT CALCULATION----
+  # TOTAL RIV POINTS----
   
-  ## Calculate RIV points based on result type and computed factors----
+  ## Calculate RIV points based on result type and computed factors
   riv_points <- reactive({
     
     req(mean_factor(), 
@@ -302,59 +302,37 @@ server <- function(input, output) {
   author_weights <- eventReactive(input$submit, {
     req(author_data())
     
-    ## Step 1----
-    # Assigning weights according to authorship
+
     tryCatch({
       author_weights <- author_data() %>% 
+        
         mutate(
-          id = str_extract(authors, "[0-9]+"),
-          authors = str_remove(authors, " [0-9]+"),
+          foreign_only    = !ffpw & !czech & non_czech,
+          czech_only      = !ffpw & czech & !non_czech,
+          ffpw_czech      = ffpw & czech & !non_czech,
+          ffpw_foreign    = ffpw & !czech & non_czech,
+          czech_foreign   = !ffpw & czech & non_czech
+        ) %>%
+        mutate(
+          weight =
+            1 +
+            if_else(first_author, 1 / sum(first_author), 0) +
+            if_else(row_number() == n(), 0.5, 0),
           
-          ### 1.1----
-          # assign all authors a weight of 1
-          weight = 1,
+          weight_corr = if_else(foreign_only, weight * 0.5, weight),
           
-          ### 1.2----
-          # add a weight of 1/n (n = number of first authors) for all first authors
-          weight = if_else(first_author == FALSE, 
-                           weight, 
-                           weight + 1/sum(first_author)),
-          
-          ### 1.3----
-          # add a weight of 0.5 to the last author
-          weight = if_else(row_number() != n(), 
-                           weight, 
-                           weight + 0.5),
-          
-          ### 2.1----
-          weight_corr = weight,
-          
-          # if the author is affiliated with FFPW and another Czech 
-          # institution, then the hypothetical weights are being divided by 2
-          weight_corr = if_else(ffpw == TRUE & czech == TRUE & non_czech == FALSE, 
-                                weight * (1/2), 
-                                weight_corr),
-          
-          
-          weight_corr = if_else(ffpw == FALSE & czech == TRUE & non_czech == FALSE, 
-                                weight * 0, 
-                                weight_corr),
-          
-          weight_corr = if_else(ffpw == TRUE & czech == FALSE & non_czech == TRUE, 
-                                weight * (1/2), 
-                                weight_corr),
-          
-          weight_corr = if_else(ffpw == FALSE & czech == TRUE & non_czech == TRUE, 
-                                weight * 0, 
-                                weight_corr),
-          
-          # the weights determined by following steps 1-3 is multiplied by 0.5 
-          # if the author is exclusively affiliated with an institution 
-          # outside of the Czech Republic
-          weight_corr = if_else(ffpw == FALSE & czech == FALSE & non_czech == TRUE,
-                           weight * (1/2), 
-                           weight_corr)
+          weight_ffpw = case_when(
+            ffpw_czech   ~ weight_corr * 0.5,
+            ffpw_foreign ~ weight_corr * 0.5,
+            czech_only   ~ 0,
+            czech_foreign ~ 0,
+            foreign_only ~ 0,
+            TRUE ~ weight_corr
           )
+        ) %>%
+        select(-foreign_only, -czech_only, -ffpw_czech,
+               -ffpw_foreign, -czech_foreign)
+      
           
 
       
@@ -385,10 +363,10 @@ server <- function(input, output) {
         
         # calculate RIV points per author
         mutate(
-          sum_weights = sum(weight),
+          sum_weights = sum(weight_corr),
           riv_per_weight = riv_points() / sum_weights,
-          points_per_author_max = weight * riv_per_weight,
-          points_per_author = weight_corr * riv_per_weight
+          points_per_author_max = weight_corr * riv_per_weight,
+          points_per_author_ffpw = weight_ffpw * riv_per_weight
         )
       
       
@@ -407,15 +385,15 @@ server <- function(input, output) {
   
   
   
-  # Render riv_overview table----
+  ## Render riv_overview table----
   output$riv_overview <- renderTable({
     req(riv_points_per_author())
 
     tryCatch({
       riv_overview <- riv_points_per_author() %>%
         summarise(
-          Total = sum(points_per_author_max),
-          FFPW = sum(points_per_author)
+          TOTAL = sum(points_per_author_max),
+          FFPW = sum(points_per_author_ffpw)
           )
 
       print("riv_overview table rendered successfully!")
@@ -424,7 +402,7 @@ server <- function(input, output) {
       return(riv_overview)
 
     }, error = function(e) {
-      print(paste("Error in rendering RIV overview table:", e$message))
+      print(paste("Error in rendering riv_overview table:", e$message))
       return(NULL)
     })
   },
@@ -439,14 +417,17 @@ server <- function(input, output) {
     
     tryCatch({
       riv_points_per_author_table <- riv_points_per_author() %>%
-        mutate(authors = ifelse(!is.na(id), paste(authors, id), authors)) %>% 
-        select(authors, weight, weight_corr, points_per_author_max, points_per_author) %>%
+        #mutate(authors = ifelse(!is.na(id), paste(authors, id), authors)) %>% 
+        select(authors, 
+               weight, weight_corr, weight_ffpw, 
+               points_per_author_max, points_per_author_ffpw) %>%
         rename(
           `Author` = "authors",
-          `Author weight: Total` = "weight",
-          `Author weight: FFPW` = "weight_corr",
-          `RIV points: Author` = "points_per_author_max",
-          `RIV points: FFPW` = "points_per_author"
+          `Base weight` = "weight",
+          `Corr. weight` = "weight_corr",
+          `FFPW weight` = "weight_ffpw",
+          `Author RIV points` = "points_per_author_max",
+          `FFPW RIV points` = "points_per_author_ffpw"
         )
       
       
@@ -456,7 +437,7 @@ server <- function(input, output) {
       return(riv_points_per_author_table)
       
     }, error = function(e){
-      print(paste("Error in rendering RIV overview table:", e$message))
+      print(paste("Error in rendering riv_points_per_author_table table:", e$message))
       return(NULL)
     })
   },

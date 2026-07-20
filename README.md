@@ -7,8 +7,9 @@ This RShiny app calculates RIV points according to [Dean’s Measure
 No. 18/2024](https://www.frov.jcu.cz/images/FROV/fakulta/uredni-deska/opatreni-dekana/2024/Measure_of_Dean_18-2024.pdf).
 The app uses the *Clarivate Journal Citation Report* data to calculate
 the RIV points for scientific outputs such as journal articles. The app
-is designed to be used by researchers and research institutions in the
-Czech Republic.
+is designed to be used by researchers and research institutions at the
+Faculty of Fisheries and Protection of Waters, University of South
+Bohemia in České Budějovice, Czech Republic.
 
 ## Repository structure
 

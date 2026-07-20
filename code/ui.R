@@ -79,9 +79,27 @@ ui <- fluidPage(
       mainPanel(
         wellPanel(tags$h3("Journal Overview"), DTOutput("unique_journals")),
         
+        
         wellPanel(
-          tags$h4("RIV points per Institution"),
-          tableOutput("riv_overview")
+          fluidRow(
+            column(
+              width = 6,
+              tags$h4("RIV points per Institution"),
+              tableOutput("riv_overview")
+            ),
+            column(
+              width = 6,
+              tags$h4("Notes"),
+              p(
+                tags$b("TOTAL: "), 
+                "Total number of allocated RIV points for the 
+                selected journal."),
+              p(
+                tags$b("FFPW: "), 
+                "Number of RIV points for FFPW; calculated based 
+                on the indicated composition of the author team.")
+            )
+          )
         ),
         
         wellPanel(
@@ -126,12 +144,14 @@ ui <- fluidPage(
         tags$li("Assign each author an initial weight of 1."),
         tags$li("Multiply the weight of the first author by 2."),
         tags$li("Multiply the weight of the last author by 1.5."),
-        tags$li(
-          "Multiply the weight of those authors (including first
-                  and last) with an affiliation outside of the Czech 
-          Republic by 0.5. More information can be found in Dean's 
-          Measure No. 18/2024."
-        )
+        tags$li("Multiply the weight of those authors (including 
+        first and last) with an exclusive affiliation outside of 
+        the Czech Republic by 0.5."),
+        tags$li("Multiply the weight of those authors (including 
+        first and last) with an exclusive affiliation at another 
+        institution in the Czech Republic by 0."),
+        tags$p("More information can be found in Dean's 
+          Measure No. 18/2024.")
       )
     )
   ),
